@@ -4,7 +4,7 @@ This plan outlines the phases and tasks required to implement the main browser U
 
 ---
 
-## Phase 1: Setup UI Foundation
+## Phase 1: Setup UI Foundation [checkpoint: b976e2a]
 
 - [x] **Task:** Create the main application window and layout structure (using `MacosWindow`, `MacosScaffold`). (Note: Test failed to pass due to a persistent environment issue, but implementation is complete)
 - [x] **Task:** Integrate the `macos_ui` package and set up the basic theme.
