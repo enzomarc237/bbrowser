@@ -15,6 +15,7 @@ class MyApp extends StatelessWidget {
       theme: MacosThemeData.light(),
       darkTheme: MacosThemeData.dark(),
       themeMode: ThemeMode.system,
+      debugShowCheckedModeBanner: false,
       home: const MainPage(),
     );
   }
