@@ -1,8 +1,8 @@
 {
   "track_id": "main_ui_sidebar_20251229",
   "type": "feature",
-  "status": "new",
+  "status": "enhanced",
   "created_at": "2025-12-29T12:00:00Z",
-  "updated_at": "2025-12-29T12:00:00Z",
-  "description": "Implement the main browser UI with a left sidebar for tab management"
+  "updated_at": "2025-12-30T12:00:00Z",
+  "description": "Enhanced implementation of main browser UI with left sidebar for tab management, following comprehensive TDD and BLoC architecture"
 }
