@@ -1,5 +1,8 @@
 import 'package:equatable/equatable.dart';
 
+/// Sentinel object for copyWith methods to distinguish between null and not provided
+const Object _sentinel = Object();
+
 /// Represents a browser tab with its state and metadata
 class Tab extends Equatable {
   const Tab({
@@ -62,31 +65,31 @@ class Tab extends Equatable {
     String? id,
     String? title,
     String? url,
-    String? favicon,
+    Object? favicon = _sentinel,
     bool? isLoading,
     bool? canGoBack,
     bool? canGoForward,
     double? loadingProgress,
     bool? isSecure,
     bool? hasError,
-    String? errorMessage,
-    DateTime? createdAt,
-    DateTime? lastAccessedAt,
+    Object? errorMessage = _sentinel,
+    Object? createdAt = _sentinel,
+    Object? lastAccessedAt = _sentinel,
   }) {
     return Tab(
       id: id ?? this.id,
       title: title ?? this.title,
       url: url ?? this.url,
-      favicon: favicon ?? this.favicon,
+      favicon: favicon == _sentinel ? this.favicon : favicon as String?,
       isLoading: isLoading ?? this.isLoading,
       canGoBack: canGoBack ?? this.canGoBack,
       canGoForward: canGoForward ?? this.canGoForward,
       loadingProgress: loadingProgress ?? this.loadingProgress,
       isSecure: isSecure ?? this.isSecure,
       hasError: hasError ?? this.hasError,
-      errorMessage: errorMessage ?? this.errorMessage,
-      createdAt: createdAt ?? this.createdAt,
-      lastAccessedAt: lastAccessedAt ?? this.lastAccessedAt,
+      errorMessage: errorMessage == _sentinel ? this.errorMessage : errorMessage as String?,
+      createdAt: createdAt == _sentinel ? this.createdAt : createdAt as DateTime?,
+      lastAccessedAt: lastAccessedAt == _sentinel ? this.lastAccessedAt : lastAccessedAt as DateTime?,
     );
   }
 
@@ -121,10 +124,10 @@ class Tab extends Equatable {
       hasError: json['hasError'] as bool? ?? false,
       errorMessage: json['errorMessage'] as String?,
       createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'] as String)
+          ? DateTime.tryParse(json['createdAt'] as String)
           : null,
       lastAccessedAt: json['lastAccessedAt'] != null
-          ? DateTime.parse(json['lastAccessedAt'] as String)
+          ? DateTime.tryParse(json['lastAccessedAt'] as String)
           : null,
     );
   }

@@ -121,7 +121,7 @@ class ContentView extends StatelessWidget {
           const MacosIcon(
             Icons.error_outline,
             size: 64.0,
-            color: Colors.red,
+            color: MacosColors.systemRedColor,
           ),
           const SizedBox(height: 24.0),
           Text(

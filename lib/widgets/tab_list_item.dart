@@ -204,6 +204,11 @@ class _TabListItemState extends State<TabListItem> {
       return false;
     }
     
+    // Show URL if title is empty (provides useful context)
+    if (widget.tab.title.isEmpty) {
+      return true;
+    }
+    
     // Don't show URL if it's the same as the title
     if (widget.tab.title.toLowerCase().contains(widget.tab.url.toLowerCase()) ||
         widget.tab.url.toLowerCase().contains(widget.tab.title.toLowerCase())) {
