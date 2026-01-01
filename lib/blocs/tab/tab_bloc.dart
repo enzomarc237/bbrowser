@@ -1,0 +1,371 @@
+import 'dart:async';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../models/tab.dart';
+import 'tab_event.dart';
+import 'tab_state.dart';
+
+/// BLoC for managing browser tabs
+class TabBloc extends Bloc<TabEvent, TabState> {
+  TabBloc() : super(const TabInitial()) {
+    on<TabCreated>(_onTabCreated);
+    on<TabSelected>(_onTabSelected);
+    on<TabClosed>(_onTabClosed);
+    on<TabUpdated>(_onTabUpdated);
+    on<TabsReordered>(_onTabsReordered);
+    on<TabNavigateToUrl>(_onTabNavigateToUrl);
+    on<TabNavigateBack>(_onTabNavigateBack);
+    on<TabNavigateForward>(_onTabNavigateForward);
+    on<TabReload>(_onTabReload);
+    on<TabsRestored>(_onTabsRestored);
+    on<TabSessionSaved>(_onTabSessionSaved);
+    on<TabsCleared>(_onTabsCleared);
+    on<TabDuplicated>(_onTabDuplicated);
+  }
+
+  /// Handles creating a new tab
+  Future<void> _onTabCreated(TabCreated event, Emitter<TabState> emit) async {
+    try {
+      final currentState = state;
+      
+      // Create new tab
+      final newTab = Tab.newTab(
+        url: event.url,
+        title: event.title,
+      );
+
+      if (currentState is TabLoaded) {
+        // Add to existing tabs
+        emit(currentState.withAddedTab(newTab, makeActive: event.makeActive));
+      } else {
+        // First tab
+        emit(TabLoaded(
+          tabs: [newTab],
+          activeTabId: event.makeActive ? newTab.id : null,
+        ));
+      }
+    } catch (e) {
+      emit(TabError(
+        message: 'Failed to create tab: ${e.toString()}',
+        tabs: state is TabLoaded ? (state as TabLoaded).tabs : [],
+        activeTabId: state is TabLoaded ? (state as TabLoaded).activeTabId : null,
+      ));
+    }
+  }
+
+  /// Handles selecting a tab
+  Future<void> _onTabSelected(TabSelected event, Emitter<TabState> emit) async {
+    try {
+      final currentState = state;
+      
+      if (currentState is TabLoaded) {
+        if (currentState.hasTab(event.tabId)) {
+          // Update last accessed time
+          final tab = currentState.getTab(event.tabId);
+          if (tab != null) {
+            final updatedTab = tab.copyWith(lastAccessedAt: DateTime.now());
+            final updatedState = currentState
+                .withUpdatedTab(event.tabId, updatedTab)
+                .withActiveTab(event.tabId);
+            emit(updatedState);
+          } else {
+            emit(currentState.withActiveTab(event.tabId));
+          }
+        } else {
+          emit(TabError(
+            message: 'Tab not found: ${event.tabId}',
+            tabs: currentState.tabs,
+            activeTabId: currentState.activeTabId,
+          ));
+        }
+      } else {
+        emit(const TabError(message: 'No tabs available to select'));
+      }
+    } catch (e) {
+      emit(TabError(
+        message: 'Failed to select tab: ${e.toString()}',
+        tabs: state is TabLoaded ? (state as TabLoaded).tabs : [],
+        activeTabId: state is TabLoaded ? (state as TabLoaded).activeTabId : null,
+      ));
+    }
+  }
+
+  /// Handles closing a tab
+  Future<void> _onTabClosed(TabClosed event, Emitter<TabState> emit) async {
+    try {
+      final currentState = state;
+      
+      if (currentState is TabLoaded) {
+        if (currentState.hasTab(event.tabId)) {
+          final newState = currentState.withRemovedTab(event.tabId);
+          
+          // If no tabs left, go to initial state
+          if (newState.tabs.isEmpty) {
+            emit(const TabInitial());
+          } else {
+            emit(newState);
+          }
+        } else {
+          emit(TabError(
+            message: 'Tab not found: ${event.tabId}',
+            tabs: currentState.tabs,
+            activeTabId: currentState.activeTabId,
+          ));
+        }
+      } else {
+        emit(const TabError(message: 'No tabs available to close'));
+      }
+    } catch (e) {
+      emit(TabError(
+        message: 'Failed to close tab: ${e.toString()}',
+        tabs: state is TabLoaded ? (state as TabLoaded).tabs : [],
+        activeTabId: state is TabLoaded ? (state as TabLoaded).activeTabId : null,
+      ));
+    }
+  }
+
+  /// Handles updating tab information
+  Future<void> _onTabUpdated(TabUpdated event, Emitter<TabState> emit) async {
+    try {
+      final currentState = state;
+      
+      if (currentState is TabLoaded) {
+        final tab = currentState.getTab(event.tabId);
+        if (tab != null) {
+          final updatedTab = tab.copyWith(
+            title: event.title,
+            url: event.url,
+            favicon: event.favicon,
+            isLoading: event.isLoading,
+            canGoBack: event.canGoBack,
+            canGoForward: event.canGoForward,
+            loadingProgress: event.loadingProgress,
+            isSecure: event.isSecure,
+            hasError: event.hasError,
+            errorMessage: event.errorMessage,
+            lastAccessedAt: DateTime.now(),
+          );
+          
+          emit(currentState.withUpdatedTab(event.tabId, updatedTab));
+        } else {
+          emit(TabError(
+            message: 'Tab not found: ${event.tabId}',
+            tabs: currentState.tabs,
+            activeTabId: currentState.activeTabId,
+          ));
+        }
+      } else {
+        emit(const TabError(message: 'No tabs available to update'));
+      }
+    } catch (e) {
+      emit(TabError(
+        message: 'Failed to update tab: ${e.toString()}',
+        tabs: state is TabLoaded ? (state as TabLoaded).tabs : [],
+        activeTabId: state is TabLoaded ? (state as TabLoaded).activeTabId : null,
+      ));
+    }
+  }
+
+  /// Handles reordering tabs
+  Future<void> _onTabsReordered(TabsReordered event, Emitter<TabState> emit) async {
+    try {
+      final currentState = state;
+      
+      if (currentState is TabLoaded) {
+        if (event.oldIndex >= 0 && 
+            event.oldIndex < currentState.tabs.length &&
+            event.newIndex >= 0 && 
+            event.newIndex < currentState.tabs.length) {
+          emit(currentState.withReorderedTabs(event.oldIndex, event.newIndex));
+        } else {
+          emit(TabError(
+            message: 'Invalid tab indices for reordering',
+            tabs: currentState.tabs,
+            activeTabId: currentState.activeTabId,
+          ));
+        }
+      } else {
+        emit(const TabError(message: 'No tabs available to reorder'));
+      }
+    } catch (e) {
+      emit(TabError(
+        message: 'Failed to reorder tabs: ${e.toString()}',
+        tabs: state is TabLoaded ? (state as TabLoaded).tabs : [],
+        activeTabId: state is TabLoaded ? (state as TabLoaded).activeTabId : null,
+      ));
+    }
+  }
+
+  /// Handles navigation to URL in active tab
+  Future<void> _onTabNavigateToUrl(TabNavigateToUrl event, Emitter<TabState> emit) async {
+    try {
+      final currentState = state;
+      
+      if (currentState is TabLoaded && currentState.activeTab != null) {
+        final activeTab = currentState.activeTab!;
+        final updatedTab = activeTab.copyWith(
+          url: event.url,
+          isLoading: true,
+          loadingProgress: 0.0,
+          hasError: false,
+          errorMessage: null,
+          isSecure: event.url.startsWith('https://'),
+        );
+        
+        emit(currentState.withUpdatedTab(activeTab.id, updatedTab));
+      } else {
+        emit(const TabError(message: 'No active tab to navigate'));
+      }
+    } catch (e) {
+      emit(TabError(
+        message: 'Failed to navigate: ${e.toString()}',
+        tabs: state is TabLoaded ? (state as TabLoaded).tabs : [],
+        activeTabId: state is TabLoaded ? (state as TabLoaded).activeTabId : null,
+      ));
+    }
+  }
+
+  /// Handles navigation back in active tab
+  Future<void> _onTabNavigateBack(TabNavigateBack event, Emitter<TabState> emit) async {
+    try {
+      final currentState = state;
+      
+      if (currentState is TabLoaded && currentState.activeTab != null) {
+        final activeTab = currentState.activeTab!;
+        if (activeTab.canGoBack) {
+          // This would typically trigger WebView navigation
+          // The actual navigation is handled by the WebView controller
+          // We just update the loading state here
+          final updatedTab = activeTab.copyWith(isLoading: true);
+          emit(currentState.withUpdatedTab(activeTab.id, updatedTab));
+        }
+      }
+    } catch (e) {
+      emit(TabError(
+        message: 'Failed to navigate back: ${e.toString()}',
+        tabs: state is TabLoaded ? (state as TabLoaded).tabs : [],
+        activeTabId: state is TabLoaded ? (state as TabLoaded).activeTabId : null,
+      ));
+    }
+  }
+
+  /// Handles navigation forward in active tab
+  Future<void> _onTabNavigateForward(TabNavigateForward event, Emitter<TabState> emit) async {
+    try {
+      final currentState = state;
+      
+      if (currentState is TabLoaded && currentState.activeTab != null) {
+        final activeTab = currentState.activeTab!;
+        if (activeTab.canGoForward) {
+          // This would typically trigger WebView navigation
+          final updatedTab = activeTab.copyWith(isLoading: true);
+          emit(currentState.withUpdatedTab(activeTab.id, updatedTab));
+        }
+      }
+    } catch (e) {
+      emit(TabError(
+        message: 'Failed to navigate forward: ${e.toString()}',
+        tabs: state is TabLoaded ? (state as TabLoaded).tabs : [],
+        activeTabId: state is TabLoaded ? (state as TabLoaded).activeTabId : null,
+      ));
+    }
+  }
+
+  /// Handles reloading the active tab
+  Future<void> _onTabReload(TabReload event, Emitter<TabState> emit) async {
+    try {
+      final currentState = state;
+      
+      if (currentState is TabLoaded && currentState.activeTab != null) {
+        final activeTab = currentState.activeTab!;
+        final updatedTab = activeTab.copyWith(
+          isLoading: true,
+          loadingProgress: 0.0,
+          hasError: false,
+          errorMessage: null,
+        );
+        
+        emit(currentState.withUpdatedTab(activeTab.id, updatedTab));
+      }
+    } catch (e) {
+      emit(TabError(
+        message: 'Failed to reload tab: ${e.toString()}',
+        tabs: state is TabLoaded ? (state as TabLoaded).tabs : [],
+        activeTabId: state is TabLoaded ? (state as TabLoaded).activeTabId : null,
+      ));
+    }
+  }
+
+  /// Handles restoring tabs from saved session
+  Future<void> _onTabsRestored(TabsRestored event, Emitter<TabState> emit) async {
+    try {
+      if (event.tabs.isNotEmpty) {
+        emit(TabLoaded(
+          tabs: event.tabs,
+          activeTabId: event.tabs.first.id,
+          isSessionRestored: true,
+        ));
+      } else {
+        emit(const TabInitial());
+      }
+    } catch (e) {
+      emit(TabError(message: 'Failed to restore tabs: ${e.toString()}'));
+    }
+  }
+
+  /// Handles saving current tab session
+  Future<void> _onTabSessionSaved(TabSessionSaved event, Emitter<TabState> emit) async {
+    try {
+      // This would typically save to persistent storage
+      // For now, we just emit the current state
+      // Implementation would involve calling a repository or service
+    } catch (e) {
+      emit(TabError(
+        message: 'Failed to save session: ${e.toString()}',
+        tabs: state is TabLoaded ? (state as TabLoaded).tabs : [],
+        activeTabId: state is TabLoaded ? (state as TabLoaded).activeTabId : null,
+      ));
+    }
+  }
+
+  /// Handles clearing all tabs
+  Future<void> _onTabsCleared(TabsCleared event, Emitter<TabState> emit) async {
+    try {
+      emit(const TabInitial());
+    } catch (e) {
+      emit(TabError(message: 'Failed to clear tabs: ${e.toString()}'));
+    }
+  }
+
+  /// Handles duplicating a tab
+  Future<void> _onTabDuplicated(TabDuplicated event, Emitter<TabState> emit) async {
+    try {
+      final currentState = state;
+      
+      if (currentState is TabLoaded) {
+        final originalTab = currentState.getTab(event.tabId);
+        if (originalTab != null) {
+          final duplicatedTab = Tab.newTab(
+            url: originalTab.url,
+            title: originalTab.title,
+          );
+          
+          emit(currentState.withAddedTab(duplicatedTab, makeActive: true));
+        } else {
+          emit(TabError(
+            message: 'Tab not found: ${event.tabId}',
+            tabs: currentState.tabs,
+            activeTabId: currentState.activeTabId,
+          ));
+        }
+      } else {
+        emit(const TabError(message: 'No tabs available to duplicate'));
+      }
+    } catch (e) {
+      emit(TabError(
+        message: 'Failed to duplicate tab: ${e.toString()}',
+        tabs: state is TabLoaded ? (state as TabLoaded).tabs : [],
+        activeTabId: state is TabLoaded ? (state as TabLoaded).activeTabId : null,
+      ));
+    }
+  }
+}

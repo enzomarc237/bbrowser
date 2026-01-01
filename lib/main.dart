@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:macos_ui/macos_ui.dart';
+import 'blocs/tab/tab_bloc.dart';
+import 'blocs/tab/tab_event.dart';
+import 'widgets/navigation_bar.dart';
+import 'widgets/sidebar.dart';
+import 'widgets/content_view.dart';
 
 void main() {
   runApp(const MyApp());
@@ -11,7 +17,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MacosApp(
-      title: 'WebKit Browser',
+      title: 'BBrowser',
       theme: MacosThemeData.light(),
       darkTheme: MacosThemeData.dark(),
       themeMode: ThemeMode.system,
@@ -21,37 +27,38 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MainPage extends StatefulWidget {
+class MainPage extends StatelessWidget {
   const MainPage({super.key});
 
   @override
-  State<MainPage> createState() => _MainPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => TabBloc()..add(const TabCreated()),
+      child: const BrowserWindow(),
+    );
+  }
 }
 
-class _MainPageState extends State<MainPage> {
+class BrowserWindow extends StatelessWidget {
+  const BrowserWindow({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MacosWindow(
       sidebar: Sidebar(
         minWidth: 200,
+        maxWidth: 300,
+        shownByDefault: true,
         builder: (context, scrollController) {
-          return const Center(
-            child: Text('Left Sidebar'),
-          );
+          return const TabSidebar();
         },
       ),
-      child: MacosScaffold(
+      child: const MacosScaffold(
         toolBar: ToolBar(
-          title: const Text('Top Navigation Bar'),
+          title: BrowserNavigationBar(),
         ),
         children: [
-          ContentArea(
-            builder: (context, scrollController) {
-              return const Center(
-                child: Text('Main Content Area'),
-              );
-            },
-          ),
+          ContentView(),
         ],
       ),
     );
