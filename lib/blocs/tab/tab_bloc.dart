@@ -318,6 +318,7 @@ class TabBloc extends Bloc<TabEvent, TabState> {
       // This would typically save to persistent storage
       // For now, we just emit the current state
       // Implementation would involve calling a repository or service
+      throw UnimplementedError('Session saving not yet implemented');
     } catch (e) {
       emit(TabError(
         message: 'Failed to save session: ${e.toString()}',

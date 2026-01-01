@@ -33,10 +33,12 @@ class _AddressBarState extends State<AddressBar> {
     _controller = TextEditingController(text: widget.url);
     _focusNode = FocusNode();
     
-    _focusNode.addListener(() {
-      setState(() {
-        _isEditing = _focusNode.hasFocus;
-      });
+    _focusNode.addListener(_onFocusChanged);
+  }
+
+  void _onFocusChanged() {
+    setState(() {
+      _isEditing = _focusNode.hasFocus;
     });
   }
 
@@ -52,6 +54,7 @@ class _AddressBarState extends State<AddressBar> {
 
   @override
   void dispose() {
+    _focusNode.removeListener(_onFocusChanged);
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();

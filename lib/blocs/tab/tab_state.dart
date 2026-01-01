@@ -1,6 +1,9 @@
 import 'package:equatable/equatable.dart';
 import '../../models/tab.dart';
 
+/// Sentinel object for copyWith methods to distinguish between null and not provided
+const Object _sentinel = Object();
+
 /// Base class for all tab states
 abstract class TabState extends Equatable {
   const TabState();
@@ -75,12 +78,12 @@ class TabLoaded extends TabState {
   /// Create a copy of this state with updated values
   TabLoaded copyWith({
     List<Tab>? tabs,
-    String? activeTabId,
+    Object? activeTabId = _sentinel,
     bool? isSessionRestored,
   }) {
     return TabLoaded(
       tabs: tabs ?? this.tabs,
-      activeTabId: activeTabId ?? this.activeTabId,
+      activeTabId: activeTabId == _sentinel ? this.activeTabId : activeTabId as String?,
       isSessionRestored: isSessionRestored ?? this.isSessionRestored,
     );
   }
