@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../models/tab.dart';
+import '../base/base_bloc.dart';
+import '../communication/bloc_event_bus.dart';
 import 'tab_event.dart';
 import 'tab_state.dart';
 
 /// BLoC for managing browser tabs
-class TabBloc extends Bloc<TabEvent, TabState> {
+class TabBloc extends BaseBloc<TabEvent, TabState> 
+    with BlocCommunicationMixin<TabEvent, TabState> {
   TabBloc() : super(const TabInitial()) {
     on<TabCreated>(_onTabCreated);
     on<TabSelected>(_onTabSelected);
@@ -22,34 +25,91 @@ class TabBloc extends Bloc<TabEvent, TabState> {
     on<TabDuplicated>(_onTabDuplicated);
   }
 
+  @override
+  String get blocName => 'TabBloc';
+
+  @override
+  TabState buildErrorState({
+    required Object error,
+    StackTrace? stackTrace,
+    String? context,
+    String? message,
+  }) {
+    final currentState = state;
+    return TabError(
+      message: message ?? getErrorMessage(error, context: context),
+      tabs: currentState is TabLoaded ? currentState.tabs : [],
+      activeTabId: currentState is TabLoaded ? currentState.activeTabId : null,
+      error: error,
+      stackTrace: stackTrace,
+      context: context,
+      isRecoverable: isRecoverableError(error),
+    );
+  }
+
+  @override
+  TabState buildLoadingState({
+    String? operation,
+    double? progress,
+    String? message,
+  }) {
+    final currentState = state;
+    if (currentState is TabLoaded) {
+      return TabOperationInProgress(
+        operation: operation ?? 'Processing',
+        tabs: currentState.tabs,
+        activeTabId: currentState.activeTabId,
+        progress: progress,
+        message: message,
+      );
+    }
+    return const TabLoading();
+  }
+
+  @override
+  void onStateChanged(TabState state) {
+    super.onStateChanged(state);
+    
+    // Publish global events for cross-BLoC communication
+    if (state is TabLoaded) {
+      if (state.activeTabId != null) {
+        publishGlobalEvent(TabSelectedGlobalEvent(state.activeTabId!));
+      }
+    }
+  }
+
+  @override
+  Future<void> close() async {
+    await disposeGlobalSubscriptions();
+    return super.close();
+  }
+
   /// Handles creating a new tab
   Future<void> _onTabCreated(TabCreated event, Emitter<TabState> emit) async {
-    try {
-      final currentState = state;
-      
-      // Create new tab
-      final newTab = Tab.newTab(
-        url: event.url,
-        title: event.title,
-      );
+    await handleErrors(
+      action: () async {
+        final currentState = state;
+        
+        // Create new tab
+        final newTab = Tab.newTab(
+          url: event.url,
+          title: event.title,
+        );
 
-      if (currentState is TabLoaded) {
-        // Add to existing tabs
-        emit(currentState.withAddedTab(newTab, makeActive: event.makeActive));
-      } else {
-        // First tab
-        emit(TabLoaded(
-          tabs: [newTab],
-          activeTabId: event.makeActive ? newTab.id : null,
-        ));
-      }
-    } catch (e) {
-      emit(TabError(
-        message: 'Failed to create tab: ${e.toString()}',
-        tabs: state is TabLoaded ? (state as TabLoaded).tabs : [],
-        activeTabId: state is TabLoaded ? (state as TabLoaded).activeTabId : null,
-      ));
-    }
+        if (currentState is TabLoaded) {
+          // Add to existing tabs
+          emit(currentState.withAddedTab(newTab, makeActive: event.makeActive));
+        } else {
+          // First tab
+          emit(TabLoaded(
+            tabs: [newTab],
+            activeTabId: event.makeActive ? newTab.id : null,
+          ));
+        }
+      },
+      emit: emit,
+      context: 'creating new tab',
+    );
   }
 
   /// Handles selecting a tab
@@ -91,36 +151,33 @@ class TabBloc extends Bloc<TabEvent, TabState> {
 
   /// Handles closing a tab
   Future<void> _onTabClosed(TabClosed event, Emitter<TabState> emit) async {
-    try {
-      final currentState = state;
-      
-      if (currentState is TabLoaded) {
-        if (currentState.hasTab(event.tabId)) {
-          final newState = currentState.withRemovedTab(event.tabId);
-          
-          // If no tabs left, go to initial state
-          if (newState.tabs.isEmpty) {
-            emit(const TabInitial());
+    await handleErrors(
+      action: () async {
+        final currentState = state;
+        
+        if (currentState is TabLoaded) {
+          if (currentState.hasTab(event.tabId)) {
+            // Publish global event before closing
+            publishGlobalEvent(TabClosedGlobalEvent(event.tabId));
+            
+            final newState = currentState.withRemovedTab(event.tabId);
+            
+            // If no tabs left, go to initial state
+            if (newState.tabs.isEmpty) {
+              emit(const TabInitial());
+            } else {
+              emit(newState);
+            }
           } else {
-            emit(newState);
+            throw StateError('Tab not found: ${event.tabId}');
           }
         } else {
-          emit(TabError(
-            message: 'Tab not found: ${event.tabId}',
-            tabs: currentState.tabs,
-            activeTabId: currentState.activeTabId,
-          ));
+          throw StateError('No tabs available to close');
         }
-      } else {
-        emit(const TabError(message: 'No tabs available to close'));
-      }
-    } catch (e) {
-      emit(TabError(
-        message: 'Failed to close tab: ${e.toString()}',
-        tabs: state is TabLoaded ? (state as TabLoaded).tabs : [],
-        activeTabId: state is TabLoaded ? (state as TabLoaded).activeTabId : null,
-      ));
-    }
+      },
+      emit: emit,
+      context: 'closing tab ${event.tabId}',
+    );
   }
 
   /// Handles updating tab information

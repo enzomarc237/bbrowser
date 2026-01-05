@@ -1,12 +1,9 @@
-import 'package:equatable/equatable.dart';
 import '../../models/tab.dart';
+import '../base/base_event.dart';
 
 /// Base class for all tab events
-abstract class TabEvent extends Equatable {
+abstract class TabEvent extends BaseEvent {
   const TabEvent();
-
-  @override
-  List<Object?> get props => [];
 }
 
 /// Event to create a new tab
