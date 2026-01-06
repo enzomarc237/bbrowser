@@ -121,6 +121,7 @@ mixin BlocLifecycleMixin<Event, State> on BlocBase<State> {
 /// ```
 mixin BlocDebounceMixin<Event, State> on BlocBase<State> {
   final Map<String, Timer> _debounceTimers = {};
+  final Map<String, Completer<void>> _debounceCompleters = {};
 
   /// Debounce an action with the given key and duration
   /// 
@@ -131,18 +132,30 @@ mixin BlocDebounceMixin<Event, State> on BlocBase<State> {
     required Duration duration,
     required Future<void> Function() action,
   }) async {
-    // Cancel existing timer for this key
+    // Cancel existing timer and complete previous completer with cancellation
     _debounceTimers[key]?.cancel();
+    final previousCompleter = _debounceCompleters[key];
+    if (previousCompleter != null && !previousCompleter.isCompleted) {
+      previousCompleter.completeError(
+        StateError('Debounce cancelled by subsequent call')
+      );
+    }
 
-    // Create new timer
+    // Create new timer and completer
     final completer = Completer<void>();
+    _debounceCompleters[key] = completer;
+    
     _debounceTimers[key] = Timer(duration, () async {
       _debounceTimers.remove(key);
-      try {
-        await action();
-        completer.complete();
-      } catch (e) {
-        completer.completeError(e);
+      final currentCompleter = _debounceCompleters.remove(key);
+      
+      if (currentCompleter != null && !currentCompleter.isCompleted) {
+        try {
+          await action();
+          currentCompleter.complete();
+        } catch (e) {
+          currentCompleter.completeError(e);
+        }
       }
     });
 
@@ -153,6 +166,14 @@ mixin BlocDebounceMixin<Event, State> on BlocBase<State> {
   void cancelDebounce(String key) {
     _debounceTimers[key]?.cancel();
     _debounceTimers.remove(key);
+    
+    // Complete the completer with cancellation error
+    final completer = _debounceCompleters.remove(key);
+    if (completer != null && !completer.isCompleted) {
+      completer.completeError(
+        StateError('Debounce cancelled manually')
+      );
+    }
   }
 
   /// Cancel all active debounce timers
@@ -161,6 +182,16 @@ mixin BlocDebounceMixin<Event, State> on BlocBase<State> {
       timer.cancel();
     }
     _debounceTimers.clear();
+    
+    // Complete all pending completers with cancellation error
+    for (final completer in _debounceCompleters.values) {
+      if (!completer.isCompleted) {
+        completer.completeError(
+          StateError('All debounce operations cancelled')
+        );
+      }
+    }
+    _debounceCompleters.clear();
   }
 
   /// Get the number of active debounce timers

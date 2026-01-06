@@ -114,7 +114,59 @@ class BlocRegistry {
       orElse: () => throw BlocRegistryException('BLoC with name "$name" not found'),
     );
 
-    return get<T>();
+    // Find the type associated with this entry
+    final type = _entries.entries
+        .firstWhere((mapEntry) => mapEntry.value == entry)
+        .key;
+
+    // Get the instance using the found type
+    final bloc = _getByType(type);
+    
+    // Ensure the returned bloc is of the expected type
+    if (bloc is! T) {
+      throw BlocRegistryException(
+        'BLoC with name "$name" is of type ${bloc.runtimeType}, but expected type $T'
+      );
+    }
+    
+    return bloc as T;
+  }
+
+  /// Internal method to get a BLoC by its type
+  BlocBase _getByType(Type type) {
+    // Check if instance already exists
+    if (_blocs.containsKey(type)) {
+      return _blocs[type]!;
+    }
+
+    // Check if factory exists
+    if (!_factories.containsKey(type)) {
+      throw BlocRegistryException('BLoC of type $type is not registered');
+    }
+
+    // Check dependencies
+    final dependencies = _dependencies[type];
+    if (dependencies != null) {
+      for (final dependency in dependencies) {
+        if (!_blocs.containsKey(dependency) && !_factories.containsKey(dependency)) {
+          throw BlocRegistryException(
+            'Dependency $dependency for BLoC $type is not registered'
+          );
+        }
+      }
+    }
+
+    // Create instance
+    final factory = _factories[type]!;
+    final bloc = factory();
+    
+    // Store instance if singleton
+    final entry = _entries[type];
+    if (entry?.singleton == true) {
+      _blocs[type] = bloc;
+    }
+
+    return bloc;
   }
 
   /// Check if a BLoC type is registered
@@ -270,7 +322,12 @@ class BlocRegistry {
         final factory = _factories[type];
         if (factory != null) {
           final bloc = factory();
-          _blocs[type] = bloc;
+          
+          // Only store instance if it's a singleton
+          final entry = _entries[type];
+          if (entry?.singleton == true) {
+            _blocs[type] = bloc;
+          }
         }
       }
     }

@@ -9,6 +9,8 @@ import 'tab_state.dart';
 /// BLoC for managing browser tabs
 class TabBloc extends BaseBloc<TabEvent, TabState> 
     with BlocCommunicationMixin<TabEvent, TabState> {
+  String? _previousActiveTabId;
+
   TabBloc() : super(const TabInitial()) {
     on<TabCreated>(_onTabCreated);
     on<TabSelected>(_onTabSelected);
@@ -70,10 +72,14 @@ class TabBloc extends BaseBloc<TabEvent, TabState>
   void onStateChanged(TabState state) {
     super.onStateChanged(state);
     
-    // Publish global events for cross-BLoC communication
+    // Publish global events for cross-BLoC communication only when active tab changes
     if (state is TabLoaded) {
-      if (state.activeTabId != null) {
-        publishGlobalEvent(TabSelectedGlobalEvent(state.activeTabId!));
+      final currentActiveTabId = state.activeTabId;
+      if (currentActiveTabId != _previousActiveTabId) {
+        _previousActiveTabId = currentActiveTabId;
+        if (currentActiveTabId != null) {
+          publishGlobalEvent(TabSelectedGlobalEvent(currentActiveTabId));
+        }
       }
     }
   }

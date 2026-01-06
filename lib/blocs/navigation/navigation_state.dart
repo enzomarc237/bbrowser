@@ -1,5 +1,8 @@
 import '../base/base_state.dart';
 
+/// Sentinel object for copyWith methods to distinguish between null and not provided
+const Object _sentinel = Object();
+
 /// Base class for all navigation states
 abstract class NavigationState extends BaseState {
   const NavigationState();
@@ -56,23 +59,27 @@ class NavigationLoaded extends NavigationState {
   bool get isSuccess => true;
 
   /// Create a copy with updated values
+  /// 
+  /// Use the sentinel pattern to distinguish between null and not provided:
+  /// - `copyWith(title: null)` sets title to null
+  /// - `copyWith()` preserves the current title
   NavigationLoaded copyWith({
-    String? currentUrl,
-    String? tabId,
-    String? title,
-    bool? canGoBack,
-    bool? canGoForward,
-    bool? isSecure,
-    String? favicon,
+    Object? currentUrl = _sentinel,
+    Object? tabId = _sentinel,
+    Object? title = _sentinel,
+    Object? canGoBack = _sentinel,
+    Object? canGoForward = _sentinel,
+    Object? isSecure = _sentinel,
+    Object? favicon = _sentinel,
   }) {
     return NavigationLoaded(
-      currentUrl: currentUrl ?? this.currentUrl,
-      tabId: tabId ?? this.tabId,
-      title: title ?? this.title,
-      canGoBack: canGoBack ?? this.canGoBack,
-      canGoForward: canGoForward ?? this.canGoForward,
-      isSecure: isSecure ?? this.isSecure,
-      favicon: favicon ?? this.favicon,
+      currentUrl: currentUrl == _sentinel ? this.currentUrl : currentUrl as String?,
+      tabId: tabId == _sentinel ? this.tabId : tabId as String?,
+      title: title == _sentinel ? this.title : title as String?,
+      canGoBack: canGoBack == _sentinel ? this.canGoBack : canGoBack as bool?,
+      canGoForward: canGoForward == _sentinel ? this.canGoForward : canGoForward as bool?,
+      isSecure: isSecure == _sentinel ? this.isSecure : isSecure as bool?,
+      favicon: favicon == _sentinel ? this.favicon : favicon as String?,
     );
   }
 
