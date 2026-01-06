@@ -4,6 +4,7 @@ import 'package:macos_ui/macos_ui.dart';
 import '../blocs/tab/tab_bloc.dart';
 import '../blocs/tab/tab_state.dart';
 import '../blocs/tab/tab_event.dart';
+import 'web_view_widget.dart';
 
 /// Content view widget that displays the main browser content
 class ContentView extends StatelessWidget {
@@ -36,8 +37,14 @@ class ContentView extends StatelessWidget {
                 return _buildErrorView(context, activeTab.errorMessage ?? 'Unknown error');
               }
 
-              // For now, show a placeholder until WebView is integrated
-              return _buildWebContentPlaceholder(context, activeTab.url, activeTab.title);
+              // Show actual WebView content
+              return WebViewWidget(
+                tabId: activeTab.id,
+                initialUrl: activeTab.url,
+                onWebViewCreated: () {
+                  // WebView has been created and is ready
+                },
+              );
             }
 
             // Initial state

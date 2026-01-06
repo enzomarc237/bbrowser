@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:macos_ui/macos_ui.dart';
+import '../services/url_validator.dart';
 
 /// Address bar widget for URL input and display
 class AddressBar extends StatefulWidget {
@@ -182,20 +183,17 @@ class _AddressBarState extends State<AddressBar> {
     final trimmedValue = value.trim();
     if (trimmedValue.isEmpty) return;
 
-    String url = trimmedValue;
+    // Use URL validator to process the input
+    final validationResult = UrlValidator.validate(trimmedValue);
     
-    // Add protocol if missing
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      // Check if it looks like a URL
-      if (url.contains('.') && !url.contains(' ')) {
-        url = 'https://$url';
-      } else {
-        // Treat as search query
-        url = 'https://www.google.com/search?q=${Uri.encodeComponent(url)}';
-      }
+    if (validationResult.isValid) {
+      widget.onUrlSubmitted(validationResult.normalizedUrl);
+    } else {
+      // Show error or fallback to search
+      final searchResult = UrlValidator.validate('search: $trimmedValue');
+      widget.onUrlSubmitted(searchResult.normalizedUrl);
     }
 
-    widget.onUrlSubmitted(url);
     _focusNode.unfocus();
   }
 }
