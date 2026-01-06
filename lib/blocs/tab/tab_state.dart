@@ -1,25 +1,28 @@
-import 'package:equatable/equatable.dart';
 import '../../models/tab.dart';
+import '../base/base_state.dart';
 
 /// Sentinel object for copyWith methods to distinguish between null and not provided
 const Object _sentinel = Object();
 
 /// Base class for all tab states
-abstract class TabState extends Equatable {
+abstract class TabState extends BaseState {
   const TabState();
-
-  @override
-  List<Object?> get props => [];
 }
 
 /// Initial state when no tabs are loaded
 class TabInitial extends TabState {
   const TabInitial();
+
+  @override
+  bool get isInitial => true;
 }
 
 /// State when tabs are being loaded
 class TabLoading extends TabState {
   const TabLoading();
+
+  @override
+  bool get isLoading => true;
 }
 
 /// State when tabs are successfully loaded and managed
@@ -33,6 +36,9 @@ class TabLoaded extends TabState {
   final List<Tab> tabs;
   final String? activeTabId;
   final bool isSessionRestored;
+
+  @override
+  bool get isSuccess => true;
 
   /// Get the currently active tab
   Tab? get activeTab {
@@ -169,18 +175,29 @@ class TabError extends TabState {
     required this.message,
     this.tabs = const [],
     this.activeTabId,
+    this.error,
+    this.stackTrace,
+    this.context,
+    this.isRecoverable = true,
   });
 
   final String message;
   final List<Tab> tabs;
   final String? activeTabId;
+  final Object? error;
+  final StackTrace? stackTrace;
+  final String? context;
+  final bool isRecoverable;
 
   @override
-  List<Object?> get props => [message, tabs, activeTabId];
+  bool get hasError => true;
+
+  @override
+  List<Object?> get props => [message, tabs, activeTabId, error, stackTrace, context, isRecoverable];
 
   @override
   String toString() {
-    return 'TabError(message: $message, tabs: ${tabs.length})';
+    return 'TabError(message: $message, tabs: ${tabs.length}, context: $context, recoverable: $isRecoverable)';
   }
 }
 
@@ -190,17 +207,26 @@ class TabOperationInProgress extends TabState {
     required this.operation,
     required this.tabs,
     required this.activeTabId,
+    this.progress,
+    this.message,
+    this.canCancel = false,
   });
 
   final String operation;
   final List<Tab> tabs;
   final String? activeTabId;
+  final double? progress;
+  final String? message;
+  final bool canCancel;
 
   @override
-  List<Object?> get props => [operation, tabs, activeTabId];
+  bool get isLoading => true;
+
+  @override
+  List<Object?> get props => [operation, tabs, activeTabId, progress, message, canCancel];
 
   @override
   String toString() {
-    return 'TabOperationInProgress(operation: $operation, tabs: ${tabs.length})';
+    return 'TabOperationInProgress(operation: $operation, tabs: ${tabs.length}, progress: $progress, canCancel: $canCancel)';
   }
 }
