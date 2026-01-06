@@ -314,8 +314,8 @@ class ContentSecurityService {
   /// Manages cookies based on policy
   bool shouldAcceptCookie(String url, String cookieName, String cookieValue) {
     try {
-      final uri = Uri.parse(url);
-      // Note: domain could be used for more sophisticated cookie policies
+      // Note: URL parsing could be used for more sophisticated cookie policies
+      // final uri = Uri.parse(url);
       // final domain = uri.host.toLowerCase();
 
       switch (_config.cookiePolicy) {
