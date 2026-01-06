@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:equatable/equatable.dart';
 
 /// Sentinel object for copyWith methods to distinguish between null and not provided

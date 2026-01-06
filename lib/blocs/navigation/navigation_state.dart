@@ -73,12 +73,12 @@ class NavigationLoaded extends NavigationState {
     Object? favicon = _sentinel,
   }) {
     return NavigationLoaded(
-      currentUrl: currentUrl == _sentinel ? this.currentUrl : currentUrl as String?,
-      tabId: tabId == _sentinel ? this.tabId : tabId as String?,
+      currentUrl: currentUrl == _sentinel ? this.currentUrl : currentUrl as String,
+      tabId: tabId == _sentinel ? this.tabId : tabId as String,
       title: title == _sentinel ? this.title : title as String?,
-      canGoBack: canGoBack == _sentinel ? this.canGoBack : canGoBack as bool?,
-      canGoForward: canGoForward == _sentinel ? this.canGoForward : canGoForward as bool?,
-      isSecure: isSecure == _sentinel ? this.isSecure : isSecure as bool?,
+      canGoBack: canGoBack == _sentinel ? this.canGoBack : canGoBack as bool,
+      canGoForward: canGoForward == _sentinel ? this.canGoForward : canGoForward as bool,
+      isSecure: isSecure == _sentinel ? this.isSecure : isSecure as bool,
       favicon: favicon == _sentinel ? this.favicon : favicon as String?,
     );
   }
