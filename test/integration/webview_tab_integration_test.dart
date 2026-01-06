@@ -8,7 +8,7 @@ import 'package:bbrowser/widgets/web_view_widget.dart';
 import 'package:bbrowser/blocs/tab/tab_bloc.dart';
 import 'package:bbrowser/blocs/tab/tab_state.dart';
 import 'package:bbrowser/blocs/tab/tab_event.dart';
-import 'package:bbrowser/models/tab.dart';
+import 'package:bbrowser/models/tab.dart' as browser_tab;
 
 // Mock classes
 class MockTabBloc extends Mock implements TabBloc {}
@@ -42,7 +42,7 @@ void main() {
       testWidgets('should show WebView when tab has URL', (tester) async {
         final tabState = TabLoaded(
           tabs: [
-            Tab.newTab(
+            browser_tab.Tab.newTab(
               id: 'test_tab',
               url: 'https://example.com',
               title: 'Example Page',
@@ -54,7 +54,7 @@ void main() {
         await tester.pumpWidget(createTestWidget(initialState: tabState));
 
         // Should show WebView widget
-        expect(find.byType(WebViewWidget), findsOneWidget);
+        expect(find.byType(BrowserWebViewWidget), findsOneWidget);
         expect(find.text('WebView Integration Coming Soon'), findsNothing);
       });
 
@@ -66,13 +66,13 @@ void main() {
         // Should show welcome view
         expect(find.text('Welcome to Browser'), findsOneWidget);
         expect(find.text('Create a new tab to start browsing the web'), findsOneWidget);
-        expect(find.byType(WebViewWidget), findsNothing);
+        expect(find.byType(BrowserWebViewWidget), findsNothing);
       });
 
       testWidgets('should show no tab view when no active tab', (tester) async {
         final tabState = TabLoaded(
           tabs: [
-            Tab.newTab(
+            browser_tab.Tab.newTab(
               id: 'test_tab',
               url: 'https://example.com',
               title: 'Example Page',
@@ -85,13 +85,13 @@ void main() {
 
         // Should show no tab view
         expect(find.text('No Tab Selected'), findsOneWidget);
-        expect(find.byType(WebViewWidget), findsNothing);
+        expect(find.byType(BrowserWebViewWidget), findsNothing);
       });
 
       testWidgets('should show error view when tab has error', (tester) async {
         final tabState = TabLoaded(
           tabs: [
-            Tab.newTab(
+            browser_tab.Tab.newTab(
               id: 'test_tab',
               url: 'https://example.com',
               title: 'Example Page',
@@ -108,7 +108,7 @@ void main() {
         // Should show error view
         expect(find.text('Error Loading Page'), findsOneWidget);
         expect(find.text('Network error'), findsOneWidget);
-        expect(find.byType(WebViewWidget), findsNothing);
+        expect(find.byType(BrowserWebViewWidget), findsNothing);
       });
 
       testWidgets('should show loading view when tab is loading', (tester) async {
@@ -118,13 +118,13 @@ void main() {
 
         // Should show loading indicator
         expect(find.byType(ProgressCircle), findsOneWidget);
-        expect(find.byType(WebViewWidget), findsNothing);
+        expect(find.byType(BrowserWebViewWidget), findsNothing);
       });
     });
 
     group('Tab State Updates', () {
       testWidgets('should update WebView when tab URL changes', (tester) async {
-        final initialTab = Tab.newTab(
+        final initialTab = browser_tab.Tab.newTab(
           id: 'test_tab',
           url: 'https://example.com',
           title: 'Example Page',
@@ -138,7 +138,7 @@ void main() {
         await tester.pumpWidget(createTestWidget(initialState: initialState));
 
         // Verify initial WebView
-        expect(find.byType(WebViewWidget), findsOneWidget);
+        expect(find.byType(BrowserWebViewWidget), findsOneWidget);
 
         // Simulate tab URL update
         final updatedTab = initialTab.copyWith(
@@ -157,17 +157,17 @@ void main() {
         await tester.pumpWidget(createTestWidget(initialState: updatedState));
 
         // Should still show WebView (with updated URL)
-        expect(find.byType(WebViewWidget), findsOneWidget);
+        expect(find.byType(BrowserWebViewWidget), findsOneWidget);
       });
 
       testWidgets('should handle tab switching', (tester) async {
-        final tab1 = Tab.newTab(
+        final tab1 = browser_tab.Tab.newTab(
           id: 'tab1',
           url: 'https://example.com',
           title: 'Example',
         );
 
-        final tab2 = Tab.newTab(
+        final tab2 = browser_tab.Tab.newTab(
           id: 'tab2',
           url: 'https://google.com',
           title: 'Google',
@@ -181,7 +181,7 @@ void main() {
         await tester.pumpWidget(createTestWidget(initialState: initialState));
 
         // Should show WebView for tab1
-        expect(find.byType(WebViewWidget), findsOneWidget);
+        expect(find.byType(BrowserWebViewWidget), findsOneWidget);
 
         // Switch to tab2
         final switchedState = TabLoaded(
@@ -194,7 +194,7 @@ void main() {
         await tester.pumpWidget(createTestWidget(initialState: switchedState));
 
         // Should still show WebView (now for tab2)
-        expect(find.byType(WebViewWidget), findsOneWidget);
+        expect(find.byType(BrowserWebViewWidget), findsOneWidget);
       });
     });
 
@@ -202,7 +202,7 @@ void main() {
       testWidgets('should handle WebView initialization errors gracefully', (tester) async {
         final tabState = TabLoaded(
           tabs: [
-            Tab.newTab(
+            browser_tab.Tab.newTab(
               id: 'test_tab',
               url: 'invalid-url',
               title: 'Invalid URL',
@@ -214,13 +214,13 @@ void main() {
         await tester.pumpWidget(createTestWidget(initialState: tabState));
 
         // Should show WebView widget (which will handle the error internally)
-        expect(find.byType(WebViewWidget), findsOneWidget);
+        expect(find.byType(BrowserWebViewWidget), findsOneWidget);
       });
 
       testWidgets('should handle empty URL gracefully', (tester) async {
         final tabState = TabLoaded(
           tabs: [
-            Tab.newTab(
+            browser_tab.Tab.newTab(
               id: 'test_tab',
               url: '',
               title: 'Empty URL',
@@ -232,13 +232,13 @@ void main() {
         await tester.pumpWidget(createTestWidget(initialState: tabState));
 
         // Should show WebView widget
-        expect(find.byType(WebViewWidget), findsOneWidget);
+        expect(find.byType(BrowserWebViewWidget), findsOneWidget);
       });
 
       testWidgets('should handle about:blank URL', (tester) async {
         final tabState = TabLoaded(
           tabs: [
-            Tab.newTab(
+            browser_tab.Tab.newTab(
               id: 'test_tab',
               url: 'about:blank',
               title: 'New Tab',
@@ -250,7 +250,7 @@ void main() {
         await tester.pumpWidget(createTestWidget(initialState: tabState));
 
         // Should show WebView widget
-        expect(find.byType(WebViewWidget), findsOneWidget);
+        expect(find.byType(BrowserWebViewWidget), findsOneWidget);
       });
     });
 
@@ -274,7 +274,7 @@ void main() {
       testWidgets('should handle reload action', (tester) async {
         final tabState = TabLoaded(
           tabs: [
-            Tab.newTab(
+            browser_tab.Tab.newTab(
               id: 'test_tab',
               url: 'https://example.com',
               title: 'Example Page',
@@ -302,7 +302,7 @@ void main() {
 
     group('Performance', () {
       testWidgets('should not recreate WebView unnecessarily', (tester) async {
-        final tab = Tab.newTab(
+        final tab = browser_tab.Tab.newTab(
           id: 'test_tab',
           url: 'https://example.com',
           title: 'Example Page',
@@ -316,7 +316,7 @@ void main() {
         await tester.pumpWidget(createTestWidget(initialState: initialState));
 
         // Get initial WebView widget
-        final initialWebView = tester.widget<WebViewWidget>(find.byType(WebViewWidget));
+        final initialWebView = tester.widget<BrowserWebViewWidget>(find.byType(BrowserWebViewWidget));
 
         // Update tab with same ID but different title
         final updatedTab = tab.copyWith(title: 'Updated Title');
@@ -330,7 +330,7 @@ void main() {
         await tester.pumpWidget(createTestWidget(initialState: updatedState));
 
         // WebView should be the same instance (same tabId)
-        final updatedWebView = tester.widget<WebViewWidget>(find.byType(WebViewWidget));
+        final updatedWebView = tester.widget<BrowserWebViewWidget>(find.byType(BrowserWebViewWidget));
         expect(updatedWebView.tabId, equals(initialWebView.tabId));
       });
     });

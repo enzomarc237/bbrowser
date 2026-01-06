@@ -38,7 +38,7 @@ class ContentView extends StatelessWidget {
               }
 
               // Show actual WebView content
-              return WebViewWidget(
+              return BrowserWebViewWidget(
                 tabId: activeTab.id,
                 initialUrl: activeTab.url,
                 onWebViewCreated: () {

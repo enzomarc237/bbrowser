@@ -5,11 +5,10 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../services/web_view_controller.dart';
 import '../blocs/tab/tab_bloc.dart';
 import '../blocs/tab/tab_event.dart';
-import '../blocs/tab/tab_state.dart';
 
 /// Widget that displays web content using WebView
-class WebViewWidget extends StatefulWidget {
-  const WebViewWidget({
+class BrowserWebViewWidget extends StatefulWidget {
+  const BrowserWebViewWidget({
     super.key,
     required this.tabId,
     required this.initialUrl,
@@ -21,10 +20,10 @@ class WebViewWidget extends StatefulWidget {
   final VoidCallback? onWebViewCreated;
 
   @override
-  State<WebViewWidget> createState() => _WebViewWidgetState();
+  State<BrowserWebViewWidget> createState() => _BrowserWebViewWidgetState();
 }
 
-class _WebViewWidgetState extends State<WebViewWidget> {
+class _BrowserWebViewWidgetState extends State<BrowserWebViewWidget> {
   late final WebViewControllerService _webViewService;
   WebViewController? _controller;
   bool _isLoading = true;
@@ -214,7 +213,7 @@ class _WebViewWidgetState extends State<WebViewWidget> {
 
     return Stack(
       children: [
-        WebViewWidget.fromController(controller: _controller!),
+        WebViewWidget(controller: _controller!),
         if (_isLoading) _buildLoadingOverlay(),
       ],
     );
@@ -299,7 +298,7 @@ class _WebViewWidgetState extends State<WebViewWidget> {
 }
 
 /// Extension to provide WebView functionality to other widgets
-extension WebViewWidgetController on GlobalKey<_WebViewWidgetState> {
+extension BrowserWebViewWidgetController on GlobalKey<_BrowserWebViewWidgetState> {
   /// Loads a URL in the WebView
   Future<void> loadUrl(String url) async {
     await currentState?.loadUrl(url);

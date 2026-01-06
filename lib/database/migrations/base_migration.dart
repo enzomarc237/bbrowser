@@ -1,6 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'dart:convert';
-import 'dart:crypto';
+import 'package:crypto/crypto.dart';
 
 /// Base class for all database migrations
 abstract class BaseMigration {
