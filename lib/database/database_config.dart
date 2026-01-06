@@ -15,6 +15,8 @@ class DatabaseConfig {
   static const String historyTable = 'history';
   static const String tabsTable = 'tabs';
   static const String settingsTable = 'settings';
+  static const String preferencesTable = 'preferences';
+  static const String foldersTable = 'folders';
   static const String migrationsTable = 'schema_migrations';
   
   // Performance settings
