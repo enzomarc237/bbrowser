@@ -8,6 +8,11 @@ import '../repositories/history_repository.dart';
 import '../repositories/preference_repository.dart';
 import '../repositories/folder_repository.dart';
 import '../repositories/tab_repository.dart';
+import '../entities/folder.dart';
+import '../entities/bookmark.dart';
+import '../entities/history_entry.dart';
+import '../entities/user_preference.dart';
+import '../entities/tab.dart';
 
 /// Service for backing up and restoring browser data
 class BackupService {

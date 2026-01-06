@@ -6,7 +6,7 @@ import 'package:macos_ui/macos_ui.dart';
 import 'package:bbrowser/widgets/web_view_widget.dart';
 import 'package:bbrowser/blocs/tab/tab_bloc.dart';
 import 'package:bbrowser/blocs/tab/tab_state.dart';
-import 'package:bbrowser/blocs/tab/tab_event.dart';
+
 import 'package:bbrowser/models/tab.dart' as browser_tab;
 
 // Mock classes

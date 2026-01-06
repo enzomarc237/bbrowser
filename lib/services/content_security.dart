@@ -315,7 +315,8 @@ class ContentSecurityService {
   bool shouldAcceptCookie(String url, String cookieName, String cookieValue) {
     try {
       final uri = Uri.parse(url);
-      final domain = uri.host.toLowerCase();
+      // Note: domain could be used for more sophisticated cookie policies
+      // final domain = uri.host.toLowerCase();
 
       switch (_config.cookiePolicy) {
         case CookiePolicy.blockAll:
