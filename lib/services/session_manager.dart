@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:uuid/uuid.dart';
 import '../database/hive_helper.dart';
-import '../database/database_config.dart';
 import '../entities/tab.dart';
 import '../repositories/tab_repository.dart';
 

@@ -23,6 +23,7 @@ dependencies:
   # WebView
   webview_flutter: ^4.4.2
   webview_flutter_wkwebview: ^3.9.4
+  webview_flutter_platform_interface: ^2.10.0
   
   # Networking
   dio: ^5.3.2
@@ -42,6 +43,9 @@ dependencies:
   # Utilities
   url_launcher: ^6.2.1
   shared_preferences: ^2.2.2
+  path: ^1.8.3
+  uuid: ^4.1.0
+  crypto: ^3.0.3
 
 dev_dependencies:
   flutter_test:
