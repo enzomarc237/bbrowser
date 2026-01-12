@@ -1,18 +1,65 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:macos_ui/macos_ui.dart';
+import 'package.flutter_bloc/flutter_bloc.dart';
+import 'package.macos_ui/macos_ui.dart';
+import 'package.webview_flutter/webview_flutter.dart';
+import 'dart:async';
 import '../blocs/tab/tab_bloc.dart';
 import '../blocs/tab/tab_state.dart';
 import '../blocs/tab/tab_event.dart';
 
 /// Content view widget that displays the main browser content
-class ContentView extends StatelessWidget {
+class ContentView extends StatefulWidget {
   const ContentView({super.key});
+
+  @override
+  State<ContentView> createState() => _ContentViewState();
+}
+
+class _ContentViewState extends State<ContentView> {
+  final Map<String, WebViewController> _webControllers = {};
+  Timer? _titleUpdateTimer;
+  StreamSubscription<NavigationCommand>? _navigationCommandSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _navigationCommandSubscription = context.read<TabBloc>().navigationCommands.listen((command) {
+      if (_webControllers.containsKey(command.tabId)) {
+        final controller = _webControllers[command.tabId]!;
+        if (command is NavigateBackCommand) {
+          controller.goBack();
+        } else if (command is NavigateForwardCommand) {
+          controller.goForward();
+        } else if (command is ReloadCommand) {
+          controller.reload();
+        } else if (command is LoadUrlCommand) {
+          controller.loadRequest(Uri.parse(command.url));
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _titleUpdateTimer?.cancel();
+    _navigationCommandSubscription?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<TabBloc, TabState>(
       builder: (context, state) {
+        if (state is TabLoaded) {
+          final currentTabIds = state.tabs.map((t) => t.id).toSet();
+          final controllerIds = _webControllers.keys.toList();
+
+          for (final id in controllerIds) {
+            if (!currentTabIds.contains(id)) {
+              _webControllers.remove(id);
+            }
+          }
+        }
         return ContentArea(
           builder: (context, scrollController) {
             if (state is TabLoading) {
@@ -37,7 +84,7 @@ class ContentView extends StatelessWidget {
               }
 
               // For now, show a placeholder until WebView is integrated
-              return _buildWebContentPlaceholder(context, activeTab.url, activeTab.title);
+              return _buildWebView(context, state);
             }
 
             // Initial state
@@ -159,107 +206,81 @@ class ContentView extends StatelessWidget {
     );
   }
 
-  /// Builds a placeholder for web content (until WebView is integrated)
-  Widget _buildWebContentPlaceholder(BuildContext context, String url, String title) {
-    return Container(
-      color: MacosTheme.of(context).canvasColor,
-      child: Column(
-        children: [
-          // Placeholder header
-          Container(
-            padding: const EdgeInsets.all(16.0),
-            decoration: BoxDecoration(
-              color: MacosTheme.of(context).canvasColor,
-              border: Border(
-                bottom: BorderSide(
-                  color: MacosTheme.of(context).dividerColor,
-                  width: 0.5,
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                const MacosIcon(
-                  Icons.language,
-                  size: 24.0,
-                ),
-                const SizedBox(width: 12.0),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title.isNotEmpty ? title : 'Loading...',
-                        style: MacosTheme.of(context).typography.headline,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (url.isNotEmpty && url != 'about:blank') ...[
-                        const SizedBox(height: 4.0),
-                        Text(
-                          url,
-                          style: MacosTheme.of(context).typography.caption1.copyWith(
-                            color: MacosColors.secondaryLabelColor,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Placeholder content
-          Expanded(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const MacosIcon(
-                    Icons.web_asset,
-                    size: 48.0,
-                  ),
-                  const SizedBox(height: 16.0),
-                  Text(
-                    'WebView Integration Coming Soon',
-                    style: MacosTheme.of(context).typography.headline,
-                  ),
-                  const SizedBox(height: 8.0),
-                  Container(
-                    constraints: const BoxConstraints(maxWidth: 300),
-                    child: Text(
-                      'This is a placeholder for web content. WebView integration will be implemented in the next phase.',
-                      style: MacosTheme.of(context).typography.body,
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  if (url.isNotEmpty && url != 'about:blank') ...[
-                    const SizedBox(height: 16.0),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12.0,
-                        vertical: 8.0,
-                      ),
-                      decoration: BoxDecoration(
-                        color: MacosTheme.of(context).canvasColor,
-                        borderRadius: BorderRadius.circular(6.0),
-                      ),
-                      child: Text(
-                        'URL: $url',
-                        style: MacosTheme.of(context).typography.caption1,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+  Widget _buildWebView(BuildContext context, TabLoaded state) {
+    final activeTab = state.activeTab!;
+    _getOrCreateWebViewController(activeTab.id, context);
+
+    return IndexedStack(
+      index: state.tabs.indexWhere((tab) => tab.id == activeTab.id),
+      children: state.tabs.map((tab) {
+        final webViewController = _getOrCreateWebViewController(tab.id, context);
+        return WebViewWidget(controller: webViewController);
+      }).toList(),
     );
+  }
+
+  WebViewController _getOrCreateWebViewController(String tabId, BuildContext context) {
+    if (_webControllers.containsKey(tabId)) {
+      return _webControllers[tabId]!;
+    }
+
+    final controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(const Color(0x00000000))
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageStarted: (String url) {
+            context.read<TabBloc>().add(TabUpdated(
+              tabId: tabId,
+              isLoading: true,
+              url: url,
+            ));
+          },
+          onPageFinished: (String url) async {
+            final title = await _webControllers[tabId]?.getTitle() ?? '';
+            context.read<TabBloc>().add(TabUpdated(
+              tabId: tabId,
+              isLoading: false,
+              title: title,
+              canGoBack: await _webControllers[tabId]?.canGoBack(),
+              canGoForward: await _webControllers[tabId]?.canGoForward(),
+            ));
+          },
+          onWebResourceError: (WebResourceError error) {
+            context.read<TabBloc>().add(TabUpdated(
+              tabId: tabId,
+              hasError: true,
+              errorMessage: error.description,
+            ));
+          },
+          onUrlChange: (UrlChange change) {
+            if (change.url != null) {
+              context.read<TabBloc>().add(TabUrlUpdated(tabId: tabId, url: change.url!));
+              _debounceTitleUpdate(tabId);
+            }
+          },
+        ),
+      );
+
+    _webControllers[tabId] = controller;
+
+    final initialUrl = context.read<TabBloc>().state.tabs.firstWhere((tab) => tab.id == tabId).url;
+    controller.loadRequest(Uri.parse(initialUrl));
+
+    return controller;
+  }
+
+  void _debounceTitleUpdate(String tabId) {
+    _titleUpdateTimer?.cancel();
+    _titleUpdateTimer = Timer(const Duration(milliseconds: 500), () async {
+      if (_webControllers.containsKey(tabId)) {
+        final controller = _webControllers[tabId]!;
+        final title = await controller.getTitle() ?? '';
+        if (mounted) {
+          context.read<TabBloc>().add(TabTitleUpdated(tabId: tabId, title: title));
+        }
+      }
+    });
   }
 
   /// Creates a new tab

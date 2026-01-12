@@ -32,6 +32,28 @@ class TabSelected extends TabEvent {
   List<Object?> get props => [tabId];
 }
 
+/// Event when the URL of a tab is updated
+class TabUrlUpdated extends TabEvent {
+  const TabUrlUpdated({required this.tabId, required this.url});
+
+  final String tabId;
+  final String url;
+
+  @override
+  List<Object?> get props => [tabId, url];
+}
+
+/// Event when the title of a tab is updated
+class TabTitleUpdated extends TabEvent {
+  const TabTitleUpdated({required this.tabId, required this.title});
+
+  final String tabId;
+  final String title;
+
+  @override
+  List<Object?> get props => [tabId, title];
+}
+
 /// Event to close a tab
 class TabClosed extends TabEvent {
   const TabClosed(this.tabId);

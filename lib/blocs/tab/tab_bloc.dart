@@ -6,10 +6,35 @@ import '../communication/bloc_event_bus.dart';
 import 'tab_event.dart';
 import 'tab_state.dart';
 
+abstract class NavigationCommand {
+  const NavigationCommand(this.tabId);
+  final String tabId;
+}
+
+class NavigateBackCommand extends NavigationCommand {
+  const NavigateBackCommand(String tabId) : super(tabId);
+}
+
+class NavigateForwardCommand extends NavigationCommand {
+  const NavigateForwardCommand(String tabId) : super(tabId);
+}
+
+class ReloadCommand extends NavigationCommand {
+  const ReloadCommand(String tabId) : super(tabId);
+}
+
+class LoadUrlCommand extends NavigationCommand {
+  const LoadUrlCommand(String tabId, this.url) : super(tabId);
+  final String url;
+}
+
 /// BLoC for managing browser tabs
 class TabBloc extends BaseBloc<TabEvent, TabState> 
     with BlocCommunicationMixin<TabEvent, TabState> {
   String? _previousActiveTabId;
+
+  final _navigationCommandController = StreamController<NavigationCommand>.broadcast();
+  Stream<NavigationCommand> get navigationCommands => _navigationCommandController.stream;
 
   TabBloc() : super(const TabInitial()) {
     on<TabCreated>(_onTabCreated);
@@ -25,6 +50,8 @@ class TabBloc extends BaseBloc<TabEvent, TabState>
     on<TabSessionSaved>(_onTabSessionSaved);
     on<TabsCleared>(_onTabsCleared);
     on<TabDuplicated>(_onTabDuplicated);
+    on<TabUrlUpdated>(_onTabUrlUpdated);
+    on<TabTitleUpdated>(_onTabTitleUpdated);
   }
 
   @override
@@ -86,6 +113,7 @@ class TabBloc extends BaseBloc<TabEvent, TabState>
 
   @override
   Future<void> close() async {
+    _navigationCommandController.close();
     await disposeGlobalSubscriptions();
     return super.close();
   }
@@ -260,101 +288,37 @@ class TabBloc extends BaseBloc<TabEvent, TabState>
 
   /// Handles navigation to URL in active tab
   Future<void> _onTabNavigateToUrl(TabNavigateToUrl event, Emitter<TabState> emit) async {
-    try {
-      final currentState = state;
-      
-      if (currentState is TabLoaded && currentState.activeTab != null) {
-        final activeTab = currentState.activeTab!;
-        final updatedTab = activeTab.copyWith(
-          url: event.url,
-          isLoading: true,
-          loadingProgress: 0.0,
-          hasError: false,
-          errorMessage: null,
-          isSecure: event.url.startsWith('https://'),
-        );
-        
-        emit(currentState.withUpdatedTab(activeTab.id, updatedTab));
-      } else {
-        emit(const TabError(message: 'No active tab to navigate'));
-      }
-    } catch (e) {
-      emit(TabError(
-        message: 'Failed to navigate: ${e.toString()}',
-        tabs: state is TabLoaded ? (state as TabLoaded).tabs : [],
-        activeTabId: state is TabLoaded ? (state as TabLoaded).activeTabId : null,
-      ));
+    final currentState = state;
+    if (currentState is TabLoaded && currentState.activeTabId != null) {
+      _navigationCommandController.add(LoadUrlCommand(currentState.activeTabId!, event.url));
     }
   }
 
   /// Handles navigation back in active tab
   Future<void> _onTabNavigateBack(TabNavigateBack event, Emitter<TabState> emit) async {
-    try {
-      final currentState = state;
-      
-      if (currentState is TabLoaded && currentState.activeTab != null) {
-        final activeTab = currentState.activeTab!;
-        if (activeTab.canGoBack) {
-          // This would typically trigger WebView navigation
-          // The actual navigation is handled by the WebView controller
-          // We just update the loading state here
-          final updatedTab = activeTab.copyWith(isLoading: true);
-          emit(currentState.withUpdatedTab(activeTab.id, updatedTab));
-        }
+    final currentState = state;
+    if (currentState is TabLoaded && currentState.activeTab != null) {
+      if (currentState.activeTab!.canGoBack) {
+        _navigationCommandController.add(NavigateBackCommand(currentState.activeTabId!));
       }
-    } catch (e) {
-      emit(TabError(
-        message: 'Failed to navigate back: ${e.toString()}',
-        tabs: state is TabLoaded ? (state as TabLoaded).tabs : [],
-        activeTabId: state is TabLoaded ? (state as TabLoaded).activeTabId : null,
-      ));
     }
   }
 
   /// Handles navigation forward in active tab
   Future<void> _onTabNavigateForward(TabNavigateForward event, Emitter<TabState> emit) async {
-    try {
-      final currentState = state;
-      
-      if (currentState is TabLoaded && currentState.activeTab != null) {
-        final activeTab = currentState.activeTab!;
-        if (activeTab.canGoForward) {
-          // This would typically trigger WebView navigation
-          final updatedTab = activeTab.copyWith(isLoading: true);
-          emit(currentState.withUpdatedTab(activeTab.id, updatedTab));
-        }
+    final currentState = state;
+    if (currentState is TabLoaded && currentState.activeTab != null) {
+      if (currentState.activeTab!.canGoForward) {
+        _navigationCommandController.add(NavigateForwardCommand(currentState.activeTabId!));
       }
-    } catch (e) {
-      emit(TabError(
-        message: 'Failed to navigate forward: ${e.toString()}',
-        tabs: state is TabLoaded ? (state as TabLoaded).tabs : [],
-        activeTabId: state is TabLoaded ? (state as TabLoaded).activeTabId : null,
-      ));
     }
   }
 
   /// Handles reloading the active tab
   Future<void> _onTabReload(TabReload event, Emitter<TabState> emit) async {
-    try {
-      final currentState = state;
-      
-      if (currentState is TabLoaded && currentState.activeTab != null) {
-        final activeTab = currentState.activeTab!;
-        final updatedTab = activeTab.copyWith(
-          isLoading: true,
-          loadingProgress: 0.0,
-          hasError: false,
-          errorMessage: null,
-        );
-        
-        emit(currentState.withUpdatedTab(activeTab.id, updatedTab));
-      }
-    } catch (e) {
-      emit(TabError(
-        message: 'Failed to reload tab: ${e.toString()}',
-        tabs: state is TabLoaded ? (state as TabLoaded).tabs : [],
-        activeTabId: state is TabLoaded ? (state as TabLoaded).activeTabId : null,
-      ));
+    final currentState = state;
+    if (currentState is TabLoaded && currentState.activeTabId != null) {
+      _navigationCommandController.add(ReloadCommand(currentState.activeTabId!));
     }
   }
 
@@ -430,6 +394,30 @@ class TabBloc extends BaseBloc<TabEvent, TabState>
         tabs: state is TabLoaded ? (state as TabLoaded).tabs : [],
         activeTabId: state is TabLoaded ? (state as TabLoaded).activeTabId : null,
       ));
+    }
+  }
+
+  /// Handles updating tab URL
+  Future<void> _onTabUrlUpdated(TabUrlUpdated event, Emitter<TabState> emit) async {
+    final currentState = state;
+    if (currentState is TabLoaded) {
+      final tab = currentState.getTab(event.tabId);
+      if (tab != null && tab.url != event.url) {
+        final updatedTab = tab.copyWith(url: event.url);
+        emit(currentState.withUpdatedTab(event.tabId, updatedTab));
+      }
+    }
+  }
+
+  /// Handles updating tab title
+  Future<void> _onTabTitleUpdated(TabTitleUpdated event, Emitter<TabState> emit) async {
+    final currentState = state;
+    if (currentState is TabLoaded) {
+      final tab = currentState.getTab(event.tabId);
+      if (tab != null && tab.title != event.title) {
+        final updatedTab = tab.copyWith(title: event.title);
+        emit(currentState.withUpdatedTab(event.tabId, updatedTab));
+      }
     }
   }
 }
