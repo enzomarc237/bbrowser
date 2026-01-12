@@ -27,17 +27,19 @@ class ContentView extends StatelessWidget {
 
             if (state is TabLoaded) {
               final activeTab = state.activeTab;
-              
+
               if (activeTab == null) {
                 return _buildNoTabView(context);
               }
 
               if (activeTab.hasError) {
-                return _buildErrorView(context, activeTab.errorMessage ?? 'Unknown error');
+                return _buildErrorView(
+                    context, activeTab.errorMessage ?? 'Unknown error');
               }
 
-              // For now, show a placeholder until WebView is integrated
-              return _buildWebContentPlaceholder(context, activeTab.url, activeTab.title);
+              // Use placeholder until WebView integration is ready
+              return _buildWebContentPlaceholder(
+                  context, activeTab.url, activeTab.title);
             }
 
             // Initial state
@@ -160,7 +162,8 @@ class ContentView extends StatelessWidget {
   }
 
   /// Builds a placeholder for web content (until WebView is integrated)
-  Widget _buildWebContentPlaceholder(BuildContext context, String url, String title) {
+  Widget _buildWebContentPlaceholder(
+      BuildContext context, String url, String title) {
     return Container(
       color: MacosTheme.of(context).canvasColor,
       child: Column(
@@ -198,9 +201,12 @@ class ContentView extends StatelessWidget {
                         const SizedBox(height: 4.0),
                         Text(
                           url,
-                          style: MacosTheme.of(context).typography.caption1.copyWith(
-                            color: MacosColors.secondaryLabelColor,
-                          ),
+                          style: MacosTheme.of(context)
+                              .typography
+                              .caption1
+                              .copyWith(
+                                color: MacosColors.secondaryLabelColor,
+                              ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -211,7 +217,7 @@ class ContentView extends StatelessWidget {
               ],
             ),
           ),
-          
+
           // Placeholder content
           Expanded(
             child: Center(

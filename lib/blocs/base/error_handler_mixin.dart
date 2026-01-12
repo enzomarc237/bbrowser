@@ -1,14 +1,14 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'base_event.dart';
-import 'base_state.dart';
 
 /// Mixin that provides consistent error handling across all BLoCs
-/// 
+///
 /// This mixin standardizes error handling patterns and provides
 /// utilities for converting exceptions to user-friendly messages.
-/// 
+///
 /// Example:
 /// ```dart
 /// class MyBloc extends Bloc<MyEvent, MyState> with ErrorHandlerMixin {
@@ -25,32 +25,33 @@ import 'base_state.dart';
 /// ```
 mixin ErrorHandlerMixin<Event, State> on BlocBase<State> {
   /// Handle errors consistently across all BLoC operations
-  /// 
+  ///
   /// This method wraps async operations and converts exceptions
   /// to appropriate error states with user-friendly messages.
   Future<void> handleErrors({
     required Future<void> Function() action,
     required Emitter<State> emit,
     String? context,
-    State Function(Object error, StackTrace? stackTrace, String? context)? errorStateBuilder,
+    State Function(Object error, StackTrace? stackTrace, String? context)?
+        errorStateBuilder,
   }) async {
     try {
       await action();
     } catch (error, stackTrace) {
       final errorState = errorStateBuilder?.call(error, stackTrace, context) ??
           _buildDefaultErrorState(error, stackTrace, context);
-      
-      if (errorState is State) {
+
+      if (errorState != null) {
         emit(errorState);
       }
-      
+
       // Log error for debugging
       _logError(error, stackTrace, context);
     }
   }
 
   /// Handle errors with loading state management
-  /// 
+  ///
   /// This method manages loading states and error states together,
   /// ensuring proper UI feedback during async operations.
   Future<void> handleErrorsWithLoading({
@@ -58,20 +59,21 @@ mixin ErrorHandlerMixin<Event, State> on BlocBase<State> {
     required Emitter<State> emit,
     required State loadingState,
     String? context,
-    State Function(Object error, StackTrace? stackTrace, String? context)? errorStateBuilder,
+    State Function(Object error, StackTrace? stackTrace, String? context)?
+        errorStateBuilder,
   }) async {
     emit(loadingState);
-    
+
     try {
       await action();
     } catch (error, stackTrace) {
       final errorState = errorStateBuilder?.call(error, stackTrace, context) ??
           _buildDefaultErrorState(error, stackTrace, context);
-      
-      if (errorState is State) {
+
+      if (errorState != null) {
         emit(errorState);
       }
-      
+
       // Log error for debugging
       _logError(error, stackTrace, context);
     }
@@ -125,31 +127,32 @@ mixin ErrorHandlerMixin<Event, State> on BlocBase<State> {
   }
 
   /// Build a default error state
-  /// 
+  ///
   /// This method should be overridden by concrete BLoCs to provide
   /// domain-specific error states.
-  State _buildDefaultErrorState(Object error, StackTrace? stackTrace, String? context) {
+  State _buildDefaultErrorState(
+      Object error, StackTrace? stackTrace, String? context) {
     // This is a fallback - concrete BLoCs should override this
     throw UnimplementedError(
-      'BLoC must implement error state building or provide errorStateBuilder parameter'
-    );
+        'BLoC must implement error state building or provide errorStateBuilder parameter');
   }
 
   /// Log error for debugging purposes
   void _logError(Object error, StackTrace? stackTrace, String? context) {
     final contextStr = context != null ? ' [$context]' : '';
-    print('BLoC Error$contextStr: $error');
+    // Use debugPrint instead of print for better output handling
+    debugPrint('BLoC Error$contextStr: $error');
     if (stackTrace != null) {
-      print('Stack trace: $stackTrace');
+      debugPrint('Stack trace: $stackTrace');
     }
   }
 }
 
 /// Mixin that provides retry functionality for failed operations
-/// 
+///
 /// This mixin allows BLoCs to implement retry logic for failed operations
 /// with configurable retry policies.
-/// 
+///
 /// Example:
 /// ```dart
 /// class MyBloc extends Bloc<MyEvent, MyState> with RetryMixin {
@@ -175,30 +178,31 @@ mixin RetryMixin<Event, State> on BlocBase<State> {
     void Function(int attempt, Object error)? onRetry,
   }) async {
     int attempt = 0;
-    
+
     while (attempt <= maxRetries) {
       try {
         return await operation();
       } catch (error) {
         attempt++;
-        
+
         // Check if we should retry this error
-        final shouldRetryError = shouldRetry?.call(error) ?? _defaultShouldRetry(error);
-        
+        final shouldRetryError =
+            shouldRetry?.call(error) ?? _defaultShouldRetry(error);
+
         if (attempt > maxRetries || !shouldRetryError) {
           rethrow;
         }
-        
+
         // Call retry callback
         onRetry?.call(attempt, error);
-        
+
         // Wait before retrying
         if (delay.inMilliseconds > 0) {
           await Future.delayed(delay);
         }
       }
     }
-    
+
     throw StateError('Retry operation completed without success or failure');
   }
 
@@ -210,21 +214,19 @@ mixin RetryMixin<Event, State> on BlocBase<State> {
   }
 
   /// Exponential backoff delay calculation
-  Duration exponentialBackoff(int attempt, {Duration baseDelay = const Duration(seconds: 1)}) {
+  Duration exponentialBackoff(int attempt,
+      {Duration baseDelay = const Duration(seconds: 1)}) {
     final multiplier = math.pow(2, attempt - 1).toInt();
     return Duration(milliseconds: baseDelay.inMilliseconds * multiplier);
   }
 }
 
-/// Import for math.pow
-import 'dart:math' as math;
-
 /// Mixin that provides circuit breaker functionality
-/// 
+///
 /// This mixin implements the circuit breaker pattern to prevent
 /// cascading failures by temporarily disabling operations that
 /// are likely to fail.
-/// 
+///
 /// Example:
 /// ```dart
 /// class MyBloc extends Bloc<MyEvent, MyState> with CircuitBreakerMixin {
@@ -297,7 +299,7 @@ mixin CircuitBreakerMixin<Event, State> on BlocBase<State> {
 class _CircuitBreakerState {
   final int failureThreshold;
   final Duration timeout;
-  
+
   int _failureCount = 0;
   DateTime? _lastFailureTime;
   _CircuitState _state = _CircuitState.closed;
@@ -323,7 +325,7 @@ class _CircuitBreakerState {
   void recordFailure() {
     _failureCount++;
     _lastFailureTime = DateTime.now();
-    
+
     if (_failureCount >= failureThreshold) {
       _state = _CircuitState.open;
     }
@@ -346,7 +348,7 @@ enum _CircuitState { closed, open, halfOpen }
 class CircuitBreakerOpenException implements Exception {
   final String message;
   const CircuitBreakerOpenException(this.message);
-  
+
   @override
   String toString() => 'CircuitBreakerOpenException: $message';
 }
