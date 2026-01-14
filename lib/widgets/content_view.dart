@@ -4,6 +4,8 @@ import 'package:macos_ui/macos_ui.dart';
 import '../blocs/tab/tab_bloc.dart';
 import '../blocs/tab/tab_state.dart';
 import '../blocs/tab/tab_event.dart';
+import '../services/webview_renderer_service.dart';
+import 'alternative_webview.dart';
 
 /// Content view widget that displays the main browser content
 class ContentView extends StatelessWidget {
@@ -27,17 +29,33 @@ class ContentView extends StatelessWidget {
 
             if (state is TabLoaded) {
               final activeTab = state.activeTab;
-              
+
               if (activeTab == null) {
                 return _buildNoTabView(context);
               }
 
               if (activeTab.hasError) {
-                return _buildErrorView(context, activeTab.errorMessage ?? 'Unknown error');
+                return _buildErrorView(
+                    context, activeTab.errorMessage ?? 'Unknown error');
               }
 
-              // For now, show a placeholder until WebView is integrated
-              return _buildWebContentPlaceholder(context, activeTab.url, activeTab.title);
+              // Use AlternativeWebView with automatic renderer selection
+              return AlternativeWebView(
+                initialUrl: activeTab.url,
+                preferences: const WebViewRendererPreferences(),
+                onWebViewCreated: (controller) {
+                  // WebView created successfully
+                },
+                onPageStarted: (url) {
+                  // Loading started
+                },
+                onPageFinished: (url) {
+                  // Loading finished
+                },
+                onWebResourceError: (error) {
+                  // Handle WebView error
+                },
+              );
             }
 
             // Initial state
@@ -70,10 +88,21 @@ class ContentView extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32.0),
-          PushButton(
-            controlSize: ControlSize.large,
-            onPressed: () => _createNewTab(context),
-            child: const Text('New Tab'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              PushButton(
+                controlSize: ControlSize.large,
+                onPressed: () => _createNewTab(context),
+                child: const Text('New Tab'),
+              ),
+              const SizedBox(width: 16.0),
+              PushButton(
+                controlSize: ControlSize.large,
+                onPressed: () => _openRendererDemo(context),
+                child: const Text('Demo'),
+              ),
+            ],
           ),
         ],
       ),
@@ -102,10 +131,21 @@ class ContentView extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32.0),
-          PushButton(
-            controlSize: ControlSize.large,
-            onPressed: () => _createNewTab(context),
-            child: const Text('New Tab'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              PushButton(
+                controlSize: ControlSize.large,
+                onPressed: () => _createNewTab(context),
+                child: const Text('New Tab'),
+              ),
+              const SizedBox(width: 16.0),
+              PushButton(
+                controlSize: ControlSize.large,
+                onPressed: () => _openRendererDemo(context),
+                child: const Text('Demo'),
+              ),
+            ],
           ),
         ],
       ),
@@ -159,109 +199,6 @@ class ContentView extends StatelessWidget {
     );
   }
 
-  /// Builds a placeholder for web content (until WebView is integrated)
-  Widget _buildWebContentPlaceholder(BuildContext context, String url, String title) {
-    return Container(
-      color: MacosTheme.of(context).canvasColor,
-      child: Column(
-        children: [
-          // Placeholder header
-          Container(
-            padding: const EdgeInsets.all(16.0),
-            decoration: BoxDecoration(
-              color: MacosTheme.of(context).canvasColor,
-              border: Border(
-                bottom: BorderSide(
-                  color: MacosTheme.of(context).dividerColor,
-                  width: 0.5,
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                const MacosIcon(
-                  Icons.language,
-                  size: 24.0,
-                ),
-                const SizedBox(width: 12.0),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title.isNotEmpty ? title : 'Loading...',
-                        style: MacosTheme.of(context).typography.headline,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (url.isNotEmpty && url != 'about:blank') ...[
-                        const SizedBox(height: 4.0),
-                        Text(
-                          url,
-                          style: MacosTheme.of(context).typography.caption1.copyWith(
-                            color: MacosColors.secondaryLabelColor,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Placeholder content
-          Expanded(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const MacosIcon(
-                    Icons.web_asset,
-                    size: 48.0,
-                  ),
-                  const SizedBox(height: 16.0),
-                  Text(
-                    'WebView Integration Coming Soon',
-                    style: MacosTheme.of(context).typography.headline,
-                  ),
-                  const SizedBox(height: 8.0),
-                  Container(
-                    constraints: const BoxConstraints(maxWidth: 300),
-                    child: Text(
-                      'This is a placeholder for web content. WebView integration will be implemented in the next phase.',
-                      style: MacosTheme.of(context).typography.body,
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  if (url.isNotEmpty && url != 'about:blank') ...[
-                    const SizedBox(height: 16.0),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12.0,
-                        vertical: 8.0,
-                      ),
-                      decoration: BoxDecoration(
-                        color: MacosTheme.of(context).canvasColor,
-                        borderRadius: BorderRadius.circular(6.0),
-                      ),
-                      child: Text(
-                        'URL: $url',
-                        style: MacosTheme.of(context).typography.caption1,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// Creates a new tab
   void _createNewTab(BuildContext context) {
     context.read<TabBloc>().add(const TabCreated());
@@ -270,5 +207,26 @@ class ContentView extends StatelessWidget {
   /// Reloads the current page
   void _reloadPage(BuildContext context) {
     context.read<TabBloc>().add(const TabReload());
+  }
+
+  /// Opens the WebView renderer demo dialog
+  void _openRendererDemo(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('WebView Renderer Demo'),
+        content: const SizedBox(
+          height: 400,
+          width: 600,
+          child: WebViewRendererDemo(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 }
